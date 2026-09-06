@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>お天気NEWS - 週間天気予報</title>
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      --card-bg: rgba(255, 255, 255, 0.92);
+      --accent-color: #0088ff;
+      --text-main: #333333;
+      --temp-high: #ff4757;
+      --temp-low: #1e90ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      color: var(--text-main);
+    }
+
+    .tv-frame {
+      width: 100%;
+      max-width: 900px;
+      background: #000;
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      border: 2px solid #333;
+    }
+
+    .screen {
+      background: linear-gradient(to bottom, #74b9ff, #dfe6e9);
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ニュース番組用ヘッダー */
+    .header {
+      background: linear-gradient(90deg, #003366, #0066cc);
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    .badge {
+      background: #ff0055;
+      color: #fff;
+      font-weight: bold;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.6; }
+      100% { opacity: 1; }
+    }
+
+    .title {
+      font-size: 1.4rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    }
+
+    /* 月選択コントロール */
+    .control-panel {
+      background: rgba(255, 255, 255, 0.85);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .control-panel label {
+      font-weight: bold;
+      color: #003366;
+    }
+
+    select {
+      padding: 6px 16px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 6px;
+      border: 2px solid #0066cc;
+      outline: none;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    /* 週間予報グリッド */
+    .forecast-container {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      padding: 20px 15px;
+    }
+
+    .day-card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 12px 6px;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s;
+    }
+
+    .day-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .date {
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #444;
+    }
+
+    .day-of-week {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .sat { color: #0066cc; }
+    .sun { color: #ff0055; }
+
+    .weather-icon {
+      font-size: 2.2rem;
+      margin: 8px 0;
+      line-height: 1;
+    }
+
+    .weather-text {
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: #555;
+      margin-bottom: 8px;
+      min-height: 2em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pop {
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: #0088ff;
+      background: #e6f2ff;
+      padding: 2px 0;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+
+    .temps {
+      display: flex;
+      justify-content: space-around;
+      font-weight: bold;
+      font-size: 0.95rem;
+      border-top: 1px solid #ddd;
+      padding-top: 6px;
+    }
+
+    .temp-high { color: var(--temp-high); }
+    .temp-low { color: var(--temp-low); }
+
+    /* 番組下部テロップ */
+    .ticker {
+      background: #ffcc00;
+      color: #000;
+      padding: 8px 15px;
+      font-weight: bold;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .ticker-label {
+      background: #000;
+      color: #fff;
+      padding: 2px 8px;
+      margin-right: 12px;
+      font-size: 0.8rem;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .ticker-text {
+      display: inline-block;
+      animation: marquee 20s linear infinite;
+    }
+
+    @keyframes marquee {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    @media (max-width: 768px) {
+      .forecast-container {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .ticker-text {
+        animation: marquee 12s linear infinite;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="tv-frame">
+    <div class="screen">
+      <!-- ニュースヘッダー -->
+      <div class="header">
+        <div class="title">NEWS 7 WEATHER</div>
+        <div class="badge">LIVE</div>
+      </div>
+
+      <!-- コントロール（月選択） -->
+      <div class="control-panel">
+        <label for="month-select">対象月の選択:</label>
+        <select id="month-select" onchange="updateForecast()">
+          <!-- JavaScriptで生成 -->
+        </select>
+      </div>
+
+      <!-- 天気予報エリア -->
+      <div class="forecast-container" id="forecast-grid">
+        <!-- JavaScriptで生成 -->
+      </div>
+
+      <!-- ニューステロップ -->
+      <div class="ticker">
+        <span class="ticker-label">解説</span>
+        <span class="ticker-text" id="commentary">季節に応じた気候傾向を表示しています。</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 月ごとの気候データベース（東京ベースのリアルな概算データ）
+    const climateData = {
+      1: { name: '1月 (真冬)', baseHigh: 10, baseLow: 2, rainProb: 10, pattern: 'dry', comment: '空気が非常に乾燥しています。火の取り扱いとインフルエンザ対策に十分ご注意ください。' },
+      2: { name: '2月 (晩冬)', baseHigh: 11, baseLow: 3, rainProb: 20, pattern: 'dry', comment: '暦の上では春ですが、朝晩は厳しい冷え込みが続きます。防寒対策を万全に。' },
+      3: { name: '3月 (早春)', baseHigh: 14, baseLow: 5, rainProb: 30, pattern: 'mix', comment: '三寒四温の季節です。日ごとに気温差が大きくなるため体調管理にご注意ください。' },
+      4: { name: '4月 (春)', baseHigh: 19, baseLow: 10, rainProb: 30, pattern: 'mix', comment: 'ぽかぽか陽気が続きます。お出かけ日和の日が増えそうです。' },
+      5: { name: '5月 (新緑)', baseHigh: 23, baseLow: 15, rainProb: 30, pattern: 'sunny', comment: '過ごしやすい快適な気候です。日中は少し汗ばむ陽気となるでしょう。' },
+      6: { name: '6月 (梅雨)', baseHigh: 26, baseLow: 20, rainProb: 70, pattern: 'rainy', comment: '梅雨前線の影響で曇りや雨の日が多くなります。折りたたみ傘がお守りです。' },
+      7: { name: '7月 (初夏)', baseHigh: 30, baseLow: 23, rainProb: 40, pattern: 'summer', comment: '梅雨明けとともに厳しい暑さがやってきます。熱中症予防を心がけてください。' },
+      8: { name: '8月 (真夏)', baseHigh: 33, baseLow: 26, rainProb: 30, pattern: 'summer', comment: '連日の猛暑日となる見込みです。こまめな水分補給と適切なエアコン使用を。' },
+      9: { name: '9月 (秋雨)', baseHigh: 28, baseLow: 21, rainProb: 50, pattern: 'rainy', comment: '秋雨前線や台風の影響を受けやすい時期です。最新の気象情報にご注意ください。' },
+      10: { name: '10月 (秋晴)', baseHigh: 22, baseLow: 14, rainProb: 20, pattern: 'sunny', comment: '秋晴れの爽やかな気候が続きます。朝晩の寒暖差に気をつけましょう。' },
+      11: { name: '11月 (晩秋)', baseHigh: 17, baseLow: 8, rainProb: 20, pattern: 'dry', comment: '季節の歩みとともに木々が色づき、冬の足音が聞こえてきます。' },
+      12: { name: '12月 (初冬)', baseHigh: 12, baseLow: 4, rainProb: 10, pattern: 'dry', comment: '冬型の気圧配置が強まり、朝晩を中心に冷え込みが厳しくなります。' }
+    };
+
+    // 天気パターンの組み合わせ定義
+    const weatherList = [
+      { text: '晴れ', icon: '☀️' },
+      { text: '晴れのち曇り', icon: '🌤️' },
+      { text: '曇り時々晴れ', icon: '⛅' },
+      { text: '曇り', icon: '☁️' },
+      { text: '雨時々曇り', icon: '🌧️' },
+      { text: '大雨', icon: '☔' },
+      { text: '雷雨', icon: '⛈️' }
+    ];
+
+    const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
+
+    // 初期化処理
+    window.onload = () => {
+      const select = document.getElementById('month-select');
+      const currentMonth = new Date().getMonth() + 1;
+
+      for (let i = 1; i <= 12; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = climateData[i].name;
+        if (i === currentMonth) option.selected = true;
+        select.appendChild(option);
+      }
+
+      updateForecast();
+    };
+
+    // 予報生成関数
+    function updateForecast() {
+      const month = document.getElementById('month-select').value;
+      const data = climateData[month];
+      const grid = document.getElementById('forecast-grid');
+      const commentary = document.getElementById('commentary');
+
+      grid.innerHTML = '';
+      commentary.textContent = data.comment;
+
+      const today = new Date();
+
+      for (let i = 0; i < 7; i++) {
+        const date = new Date();
+        date.setDate(today.getDate() + i);
+
+        // 各日のデータをランダム要素を含めて算出（それっぽさを演出）
+        const dayOfWeek = weekDays[date.getDay()];
+        const dayClass = date.getDay() === 0 ? 'sun' : (date.getDay() === 6 ? 'sat' : '');
+
+        // 気温に若干のランダム変化を加える (±2度)
+        const tempVariation = Math.floor(Math.random() * 5) - 2;
+        const highTemp = data.baseHigh + tempVariation;
+        const lowTemp = data.baseLow + Math.floor(Math.random() * 3) - 1;
+
+        // パターンに応じて降水確率と天気を調整
+        let pop = Math.min(100, Math.max(0, data.rainProb + (Math.floor(Math.random() * 5) - 2) * 10));
+        let weatherIdx;
+
+        if (pop >= 70) {
+          weatherIdx = Math.random() < 0.5 ? 4 : 5; // 雨・大雨
+        } else if (pop >= 40) {
+          weatherIdx = Math.random() < 0.5 ? 2 : 3; // 曇り系
+        } else {
+          weatherIdx = Math.random() < 0.6 ? 0 : 1; // 晴れ系
+        }
+
+        const weather = weatherList[weatherIdx];
+
+        // カードエレメントの作成
+        const card = document.createElement('div');
+        card.className = 'day-card';
+        card.innerHTML = `
+          <div>
+            <div class="date">${date.getMonth() + 1}/${date.getDate()}</div>
+            <div class="day-of-week ${dayClass}">(${dayOfWeek})</div>
+          </div>
+          <div class="weather-icon">${weather.icon}</div>
+          <div class="weather-text">${weather.text}</div>
+          <div class="pop">💧 ${pop}%</div>
+          <div class="temps">
+            <span class="temp-high">${highTemp}℃</span>
+            <span class="temp-low">${lowTemp}℃</span>
+          </div>
+        `;
+
+        grid.appendChild(card);
+      }
+    }
+  </script>
+</body>
+</html>
