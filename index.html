@@ -83,7 +83,7 @@
       text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
     }
 
-    /* 月選択コントロール */
+    /* 日付選択コントロール */
     .control-panel {
       background: rgba(255, 255, 255, 0.85);
       padding: 12px 20px;
@@ -99,8 +99,8 @@
       color: #003366;
     }
 
-    select {
-      padding: 6px 16px;
+    input[type="date"] {
+      padding: 6px 12px;
       font-size: 1rem;
       font-weight: bold;
       border-radius: 6px;
@@ -241,12 +241,10 @@
         <div class="badge">LIVE</div>
       </div>
 
-      <!-- コントロール（月選択） -->
+      <!-- コントロール（日付選択） -->
       <div class="control-panel">
-        <label for="month-select">対象月の選択:</label>
-        <select id="month-select" onchange="updateForecast()">
-          <!-- JavaScriptで生成 -->
-        </select>
+        <label for="start-date">開始日の選択:</label>
+        <input type="date" id="start-date" onchange="updateForecast()">
       </div>
 
       <!-- 天気予報エリア -->
@@ -265,21 +263,21 @@
   <script>
     // 月ごとの気候データベース（東京ベースのリアルな概算データ）
     const climateData = {
-      1: { name: '1月 (真冬)', baseHigh: 10, baseLow: 2, rainProb: 10, pattern: 'dry', comment: '空気が非常に乾燥しています。火の取り扱いとインフルエンザ対策に十分ご注意ください。' },
-      2: { name: '2月 (晩冬)', baseHigh: 11, baseLow: 3, rainProb: 20, pattern: 'dry', comment: '暦の上では春ですが、朝晩は厳しい冷え込みが続きます。防寒対策を万全に。' },
-      3: { name: '3月 (早春)', baseHigh: 14, baseLow: 5, rainProb: 30, pattern: 'mix', comment: '三寒四温の季節です。日ごとに気温差が大きくなるため体調管理にご注意ください。' },
-      4: { name: '4月 (春)', baseHigh: 19, baseLow: 10, rainProb: 30, pattern: 'mix', comment: 'ぽかぽか陽気が続きます。お出かけ日和の日が増えそうです。' },
-      5: { name: '5月 (新緑)', baseHigh: 23, baseLow: 15, rainProb: 30, pattern: 'sunny', comment: '過ごしやすい快適な気候です。日中は少し汗ばむ陽気となるでしょう。' },
-      6: { name: '6月 (梅雨)', baseHigh: 26, baseLow: 20, rainProb: 70, pattern: 'rainy', comment: '梅雨前線の影響で曇りや雨の日が多くなります。折りたたみ傘がお守りです。' },
-      7: { name: '7月 (初夏)', baseHigh: 30, baseLow: 23, rainProb: 40, pattern: 'summer', comment: '梅雨明けとともに厳しい暑さがやってきます。熱中症予防を心がけてください。' },
-      8: { name: '8月 (真夏)', baseHigh: 33, baseLow: 26, rainProb: 30, pattern: 'summer', comment: '連日の猛暑日となる見込みです。こまめな水分補給と適切なエアコン使用を。' },
-      9: { name: '9月 (秋雨)', baseHigh: 28, baseLow: 21, rainProb: 50, pattern: 'rainy', comment: '秋雨前線や台風の影響を受けやすい時期です。最新の気象情報にご注意ください。' },
-      10: { name: '10月 (秋晴)', baseHigh: 22, baseLow: 14, rainProb: 20, pattern: 'sunny', comment: '秋晴れの爽やかな気候が続きます。朝晩の寒暖差に気をつけましょう。' },
-      11: { name: '11月 (晩秋)', baseHigh: 17, baseLow: 8, rainProb: 20, pattern: 'dry', comment: '季節の歩みとともに木々が色づき、冬の足音が聞こえてきます。' },
-      12: { name: '12月 (初冬)', baseHigh: 12, baseLow: 4, rainProb: 10, pattern: 'dry', comment: '冬型の気圧配置が強まり、朝晩を中心に冷え込みが厳しくなります。' }
+      1: { baseHigh: 10, baseLow: 2, rainProb: 10, comment: '空気が非常に乾燥しています。火の取り扱いとインフルエンザ対策に十分ご注意ください。' },
+      2: { baseHigh: 11, baseLow: 3, rainProb: 20, comment: '暦の上では春ですが、朝晩は厳しい冷え込みが続きます。防寒対策を万全に。' },
+      3: { baseHigh: 14, baseLow: 5, rainProb: 30, comment: '三寒四温の季節です。日ごとに気温差が大きくなるため体調管理にご注意ください。' },
+      4: { baseHigh: 19, baseLow: 10, rainProb: 30, comment: 'ぽかぽか陽気が続きます。お出かけ日和の日が増えそうです。' },
+      5: { baseHigh: 23, baseLow: 15, rainProb: 30, comment: '過ごしやすい快適な気候です。日中は少し汗ばむ陽気となるでしょう。' },
+      6: { baseHigh: 26, baseLow: 20, rainProb: 70, comment: '梅雨前線の影響で曇りや雨の日が多くなります。折りたたみ傘がお守りです。' },
+      7: { baseHigh: 30, baseLow: 23, rainProb: 40, comment: '梅雨明けとともに厳しい暑さがやってきます。熱中症予防を心がけてください。' },
+      8: { baseHigh: 33, baseLow: 26, rainProb: 30, comment: '連日の猛暑日となる見込みです。こまめな水分補給と適切なエアコン使用を。' },
+      9: { baseHigh: 28, baseLow: 21, rainProb: 50, comment: '秋雨前線や台風の影響を受けやすい時期です。最新の気象情報にご注意ください。' },
+      10: { baseHigh: 22, baseLow: 14, rainProb: 20, comment: '秋晴れの爽やかな気候が続きます。朝晩の寒暖差に気をつけましょう。' },
+      11: { baseHigh: 17, baseLow: 8, rainProb: 20, comment: '季節の歩みとともに木々が色づき、冬の足音が聞こえてきます。' },
+      12: { baseHigh: 12, baseLow: 4, rainProb: 10, comment: '冬型の気圧配置が強まり、朝晩を中心に冷え込みが厳しくなります。' }
     };
 
-    // 天気パターンの組み合わせ定義
+    // 天気パターンの定義
     const weatherList = [
       { text: '晴れ', icon: '☀️' },
       { text: '晴れのち曇り', icon: '🌤️' },
@@ -292,48 +290,55 @@
 
     const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
 
-    // 初期化処理
+    // 初期化（今日の日付をデフォルトセット）
     window.onload = () => {
-      const select = document.getElementById('month-select');
-      const currentMonth = new Date().getMonth() + 1;
-
-      for (let i = 1; i <= 12; i++) {
-        const option = document.createElement('option');
-        option.value = i;
-        option.textContent = climateData[i].name;
-        if (i === currentMonth) option.selected = true;
-        select.appendChild(option);
-      }
-
+      const dateInput = document.getElementById('start-date');
+      const today = new Date();
+      
+      // yyyy-mm-dd 形式にフォーマット
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      
+      dateInput.value = `${yyyy}-${mm}-${dd}`;
       updateForecast();
     };
 
     // 予報生成関数
     function updateForecast() {
-      const month = document.getElementById('month-select').value;
-      const data = climateData[month];
+      const dateVal = document.getElementById('start-date').value;
+      if (!dateVal) return;
+
+      // input type="date" の文字列からDateオブジェクトを作成（タイムゾーンズレ防止のため分解して渡す）
+      const [year, month, day] = dateVal.split('-').map(Number);
+      const startDate = new Date(year, month - 1, day);
+
       const grid = document.getElementById('forecast-grid');
       const commentary = document.getElementById('commentary');
 
       grid.innerHTML = '';
-      commentary.textContent = data.comment;
+      
+      // 開始日の「月」に対応する解説文を表示
+      const startMonth = startDate.getMonth() + 1;
+      commentary.textContent = climateData[startMonth].comment;
 
-      const today = new Date();
-
+      // 7日分のデータを生成
       for (let i = 0; i < 7; i++) {
-        const date = new Date();
-        date.setDate(today.getDate() + i);
+        const currentDate = new Date(year, month - 1, day + i);
+        const currentMonth = currentDate.getMonth() + 1;
+        
+        // その日の月ごとの気候データを参照
+        const data = climateData[currentMonth];
 
-        // 各日のデータをランダム要素を含めて算出（それっぽさを演出）
-        const dayOfWeek = weekDays[date.getDay()];
-        const dayClass = date.getDay() === 0 ? 'sun' : (date.getDay() === 6 ? 'sat' : '');
+        const dayOfWeek = weekDays[currentDate.getDay()];
+        const dayClass = currentDate.getDay() === 0 ? 'sun' : (currentDate.getDay() === 6 ? 'sat' : '');
 
         // 気温に若干のランダム変化を加える (±2度)
         const tempVariation = Math.floor(Math.random() * 5) - 2;
         const highTemp = data.baseHigh + tempVariation;
         const lowTemp = data.baseLow + Math.floor(Math.random() * 3) - 1;
 
-        // パターンに応じて降水確率と天気を調整
+        // 降水確率と天気を生成
         let pop = Math.min(100, Math.max(0, data.rainProb + (Math.floor(Math.random() * 5) - 2) * 10));
         let weatherIdx;
 
@@ -352,7 +357,7 @@
         card.className = 'day-card';
         card.innerHTML = `
           <div>
-            <div class="date">${date.getMonth() + 1}/${date.getDate()}</div>
+            <div class="date">${currentDate.getMonth() + 1}/${currentDate.getDate()}</div>
             <div class="day-of-week ${dayClass}">(${dayOfWeek})</div>
           </div>
           <div class="weather-icon">${weather.icon}</div>
