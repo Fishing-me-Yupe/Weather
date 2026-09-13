@@ -83,15 +83,16 @@
       text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
     }
 
-    /* 日付選択コントロール */
+    /* 操作パネル */
     .control-panel {
       background: rgba(255, 255, 255, 0.85);
       padding: 12px 20px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
+      gap: 15px;
       border-bottom: 1px solid rgba(0,0,0,0.1);
+      flex-wrap: wrap;
     }
 
     .control-panel label {
@@ -108,6 +109,30 @@
       outline: none;
       background: #fff;
       cursor: pointer;
+    }
+
+    .rec-btn {
+      background: #ff4757;
+      color: #fff;
+      border: none;
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .rec-btn:hover {
+      background: #ff6b81;
+    }
+
+    .rec-btn:disabled {
+      background: #a4b0be;
+      cursor: not-allowed;
     }
 
     /* 週間予報グリッド */
@@ -127,11 +152,6 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      transition: transform 0.2s;
-    }
-
-    .day-card:hover {
-      transform: translateY(-5px);
     }
 
     .date {
@@ -188,7 +208,7 @@
     .temp-high { color: var(--temp-high); }
     .temp-low { color: var(--temp-low); }
 
-    /* 番組下部テロップ */
+    /* 番組下部テロップ (CSSアニメーションからJS駆動のCSS変数へ変更) */
     .ticker {
       background: #ffcc00;
       color: #000;
@@ -199,6 +219,7 @@
       align-items: center;
       overflow: hidden;
       white-space: nowrap;
+      position: relative;
     }
 
     .ticker-label {
@@ -209,59 +230,64 @@
       font-size: 0.8rem;
       border-radius: 3px;
       flex-shrink: 0;
+      z-index: 2;
+    }
+
+    .ticker-text-wrapper {
+      overflow: hidden;
+      width: 100%;
+      position: relative;
     }
 
     .ticker-text {
       display: inline-block;
-      animation: marquee 20s linear infinite;
-    }
-
-    @keyframes marquee {
-      0% { transform: translateX(100%); }
-      100% { transform: translateX(-100%); }
+      white-space: nowrap;
+      transform: translateX(var(--ticker-x, 100%));
+      will-change: transform;
     }
 
     @media (max-width: 768px) {
       .forecast-container {
         grid-template-columns: repeat(2, 1fr);
       }
-      .ticker-text {
-        animation: marquee 12s linear infinite;
-      }
     }
   </style>
 </head>
 <body>
 
-  <div class="tv-frame">
+  <div class="tv-frame" id="export-target">
     <div class="screen">
-      <!-- ニュースヘッダー -->
       <div class="header">
         <div class="title">NEWS 7 WEATHER</div>
         <div class="badge">LIVE</div>
       </div>
 
-      <!-- コントロール（日付選択） -->
       <div class="control-panel">
-        <label for="start-date">開始日の選択:</label>
-        <input type="date" id="start-date" onchange="updateForecast()">
+        <div>
+          <label for="start-date">開始日:</label>
+          <input type="date" id="start-date" onchange="updateForecast()">
+        </div>
+        <button class="rec-btn" id="rec-btn" onclick="startRecording()">
+          🎥 1周期を動画書き出し (WebM)
+        </button>
       </div>
 
-      <!-- 天気予報エリア -->
       <div class="forecast-container" id="forecast-grid">
-        <!-- JavaScriptで生成 -->
-      </div>
+        </div>
 
-      <!-- ニューステロップ -->
       <div class="ticker">
         <span class="ticker-label">解説</span>
-        <span class="ticker-text" id="commentary">季節に応じた気候傾向を表示しています。</span>
+        <div class="ticker-text-wrapper" id="ticker-wrapper">
+          <span class="ticker-text" id="commentary">季節に応じた気候傾向を表示しています。</span>
+        </div>
       </div>
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
   <script>
-    // 月ごとの気候データベース（東京ベースのリアルな概算データ）
+    // 気候データベース
     const climateData = {
       1: { baseHigh: 10, baseLow: 2, rainProb: 10, comment: '空気が非常に乾燥しています。火の取り扱いとインフルエンザ対策に十分ご注意ください。' },
       2: { baseHigh: 11, baseLow: 3, rainProb: 20, comment: '暦の上では春ですが、朝晩は厳しい冷え込みが続きます。防寒対策を万全に。' },
@@ -277,7 +303,6 @@
       12: { baseHigh: 12, baseLow: 4, rainProb: 10, comment: '冬型の気圧配置が強まり、朝晩を中心に冷え込みが厳しくなります。' }
     };
 
-    // 天気パターンの定義
     const weatherList = [
       { text: '晴れ', icon: '☀️' },
       { text: '晴れのち曇り', icon: '🌤️' },
@@ -290,69 +315,71 @@
 
     const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
 
-    // 初期化（今日の日付をデフォルトセット）
+    // テロップアニメーション用変数
+    let tickerProgress = 0; // 0.0 ～ 1.0 (1周期)
+    const DURATION = 10; // テロップが右から左へ流れる時間（秒）
+    let lastTime = null;
+
     window.onload = () => {
       const dateInput = document.getElementById('start-date');
       const today = new Date();
-      
-      // yyyy-mm-dd 形式にフォーマット
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
-      
       dateInput.value = `${yyyy}-${mm}-${dd}`;
+
       updateForecast();
+      requestAnimationFrame(animateTicker);
     };
 
-    // 予報生成関数
+    // テロップのスクロールアニメーション処理
+    function animateTicker(timestamp) {
+      if (!lastTime) lastTime = timestamp;
+      const delta = (timestamp - lastTime) / 1000;
+      lastTime = timestamp;
+
+      tickerProgress += delta / DURATION;
+      if (tickerProgress >= 1) {
+        tickerProgress %= 1; // 1周期完了したらループ
+      }
+
+      // 右端 (100%) から 左端 (-100%) へ移動
+      const currentX = 100 - (tickerProgress * 200);
+      document.getElementById('commentary').style.setProperty('--ticker-x', `${currentX}%`);
+
+      requestAnimationFrame(animateTicker);
+    }
+
     function updateForecast() {
       const dateVal = document.getElementById('start-date').value;
       if (!dateVal) return;
 
-      // input type="date" の文字列からDateオブジェクトを作成（タイムゾーンズレ防止のため分解して渡す）
       const [year, month, day] = dateVal.split('-').map(Number);
-      const startDate = new Date(year, month - 1, day);
-
       const grid = document.getElementById('forecast-grid');
       const commentary = document.getElementById('commentary');
 
       grid.innerHTML = '';
-      
-      // 開始日の「月」に対応する解説文を表示
-      const startMonth = startDate.getMonth() + 1;
-      commentary.textContent = climateData[startMonth].comment;
+      commentary.textContent = climateData[month].comment;
 
-      // 7日分のデータを生成
+      // 日付を変えたらアニメーションの進行度をリセット
+      tickerProgress = 0;
+
       for (let i = 0; i < 7; i++) {
         const currentDate = new Date(year, month - 1, day + i);
         const currentMonth = currentDate.getMonth() + 1;
-        
-        // その日の月ごとの気候データを参照
         const data = climateData[currentMonth];
 
         const dayOfWeek = weekDays[currentDate.getDay()];
         const dayClass = currentDate.getDay() === 0 ? 'sun' : (currentDate.getDay() === 6 ? 'sat' : '');
 
-        // 気温に若干のランダム変化を加える (±2度)
         const tempVariation = Math.floor(Math.random() * 5) - 2;
         const highTemp = data.baseHigh + tempVariation;
         const lowTemp = data.baseLow + Math.floor(Math.random() * 3) - 1;
 
-        // 降水確率と天気を生成
         let pop = Math.min(100, Math.max(0, data.rainProb + (Math.floor(Math.random() * 5) - 2) * 10));
-        let weatherIdx;
-
-        if (pop >= 70) {
-          weatherIdx = Math.random() < 0.5 ? 4 : 5; // 雨・大雨
-        } else if (pop >= 40) {
-          weatherIdx = Math.random() < 0.5 ? 2 : 3; // 曇り系
-        } else {
-          weatherIdx = Math.random() < 0.6 ? 0 : 1; // 晴れ系
-        }
-
+        let weatherIdx = pop >= 70 ? (Math.random() < 0.5 ? 4 : 5) : (pop >= 40 ? (Math.random() < 0.5 ? 2 : 3) : (Math.random() < 0.6 ? 0 : 1));
         const weather = weatherList[weatherIdx];
 
-        // カードエレメントの作成
         const card = document.createElement('div');
         card.className = 'day-card';
         card.innerHTML = `
@@ -368,9 +395,65 @@
             <span class="temp-low">${lowTemp}℃</span>
           </div>
         `;
-
         grid.appendChild(card);
       }
+    }
+
+    /* 🎬 1周期分を録画してWebM動画を出力する機能 */
+    async function startRecording() {
+      const btn = document.getElementById('rec-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ 録画中... (1周期分)';
+
+      // アニメーションの位置を先頭(0%)に揃える
+      tickerProgress = 0;
+
+      const targetEl = document.getElementById('export-target');
+      
+      // 描画用の隠しCanvasを作成
+      const canvas = document.createElement('canvas');
+      canvas.width = targetEl.offsetWidth;
+      canvas.height = targetEl.offsetHeight;
+      const ctx = canvas.getContext('2d');
+
+      // Canvasからストリームを取得 (30fps)
+      const stream = canvas.captureStream(30);
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      const chunks = [];
+
+      mediaRecorder.ondataavailable = e => chunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        // 動画ファイルのダウンロード処理
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `weather-forecast-${document.getElementById('start-date').value}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        btn.disabled = false;
+        btn.textContent = '🎥 1周期を動画書き出し (WebM)';
+      };
+
+      mediaRecorder.start();
+
+      // 1周期（10秒間）フレーム毎にDOMをCanvasにキャプチャする
+      const startTime = performance.now();
+      const recordInterval = setInterval(async () => {
+        const elapsedTime = (performance.now() - startTime) / 1000;
+        
+        // DOMの現在のグラフィック状態をCanvasに変換
+        const tempCanvas = await html2canvas(targetEl, { logging: false, scale: 1 });
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(tempCanvas, 0, 0);
+
+        // 10秒（1周期）経過したら停止
+        if (elapsedTime >= DURATION) {
+          clearInterval(recordInterval);
+          mediaRecorder.stop();
+        }
+      }, 1000 / 30); // 約30fps周期で更新
     }
   </script>
 </body>
